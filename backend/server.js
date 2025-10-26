@@ -11,6 +11,8 @@ import { initializeVoiceWebSocket } from './routes/voice-ws-handler.js';
 //import analyzeRoutes from './routes/analyze.js';
 import postsRoutes from './routes/posts.js';
 import { createServer } from 'http';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
 // Import mock posts
 import { mockPosts } from './data/posts.js';
@@ -68,7 +70,7 @@ const AdjudicateRes = z.object({
 });
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3001;
 
 // Load and validate seed data
 // Transform mockPosts to match PostSchema
@@ -102,7 +104,7 @@ console.log('🔧 Starting server setup...');
 console.log('📍 Port:', PORT);
 
 // Middleware
-const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000,http://localhost:19006')
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000,http://localhost:19006,http://localhost:8081,http://localhost:19000')
   .split(',')
   .filter(Boolean);
 
@@ -128,6 +130,12 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
+
+// Serve static files from the images directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+app.use('/images', express.static(join(__dirname, 'images')));
 
 console.log('✅ Middleware configured');
 
@@ -230,12 +238,12 @@ app.post('/api/token', async (req, res) => {
   }
 });
 
-// Social Media Analysis Endpoints
-// GET /api/posts — serves seeded fake posts so FE can render the feed
-app.get('/api/posts', (req, res) => {
-  console.log(`[POSTS] Serving ${posts.length} posts`);
-  res.json(posts);
-});
+// // Social Media Analysis Endpoints
+// // GET /api/posts — serves seeded fake posts so FE can render the feed
+// app.get('/api/posts', (req, res) => {
+//   console.log(`[POSTS] Serving ${posts.length} posts`);
+//   res.json(posts);
+// });
 
 // POST /api/coach — returns a short, context-aware coaching question
 app.post('/api/coach', (req, res) => {

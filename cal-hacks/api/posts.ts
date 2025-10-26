@@ -18,8 +18,10 @@ export class PostsAPI {
       }
       
       const data = await response.json();
-      console.log(`✅ Received ${data.length} posts from backend`);
-      return data;
+      // Handle both array response and object with posts property
+      const posts = Array.isArray(data) ? data : (data.posts || []);
+      console.log(`✅ Received ${posts.length} posts from backend`);
+      return posts;
     } catch (error) {
       console.error('❌ Error fetching posts from backend:', error);
       throw error; // Don't fallback, let the component handle the error
