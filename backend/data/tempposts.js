@@ -50,7 +50,7 @@ export const tempPosts = [
     metadata: {
       label: 'fake',
       redFlags: [
-        'Nonsensical step instructions (“Crack pan”, “Pouk egg”)',
+        'Nonsensical step instructions ("Crack pan", "Pouk egg")',
         'AI-generated cartoonish visuals',
         'Posted by a meme/AI content page, not a credible source',
         'No educational or verifiable source for cooking instructions'
@@ -59,7 +59,7 @@ export const tempPosts = [
         'Clearly intended as humor, not misinformation'
       ],
       evidence: 'The image style and incoherent captions are consistent with AI-generated meme content. The post offers no real cooking instruction and originates from an entertainment page.',
-      sourceUrl: 'https://facebook.com/CursedAI' // or omit if not needed
+      sourceUrl: 'https://facebook.com/CursedAI'
     }
   },
   {
@@ -89,7 +89,7 @@ export const tempPosts = [
       ],
       greenFlags: [],
       evidence: 'Reverse image search and AI artifact detection reveal synthetic details. The image and caption combination are part of a known trend of AI-generated emotional bait posts with no real story.',
-      sourceUrl: 'https://facebook.com/InspiringMoments' // optional placeholder
+      sourceUrl: 'https://facebook.com/InspiringMoments'
     }
   },
   {
@@ -113,7 +113,7 @@ export const tempPosts = [
       label: 'fake',
       redFlags: [
         'Overly positive claims with no cited study or source',
-        'Buzzwords like “Generative AI Tutors” and “95% higher” without methodology',
+        'Buzzwords like "Generative AI Tutors" and "95% higher" without methodology',
         'Hyper-realistic AI-generated image with digital glow effects',
         'No credible educational institution or research body referenced'
       ],
@@ -144,22 +144,22 @@ export const tempPosts = [
     metadata: {
       label: 'fake',
       redFlags: [
-        'Clickbait title with “EXPOSED” in all caps',
-        'Sensational emotional framing (“betrayed fans”)',
-        'No actual verification of the influencer’s identity',
+        'Clickbait title with "EXPOSED" in all caps',
+        'Sensational emotional framing ("betrayed fans")',
+        'No actual verification of the influencer\'s identity',
         'Engagement farming using outrage and shock'
       ],
       greenFlags: [
         'Addresses a real trend (AI-generated influencer imagery)'
       ],
-      evidence: 'The account and influencer name cannot be verified outside social media posts. The image shows typical AI portrait features like smooth lighting and mismatched background blur. No credible source reported this “exposé.”',
+      evidence: 'The account and influencer name cannot be verified outside social media posts. The image shows typical AI portrait features like smooth lighting and mismatched background blur. No credible source reported this "exposé."',
       sourceUrl: 'https://popbuzzfeedz.com/ai-influencer-exposed'
     }
   },
   {
     id: '21',
     type: 'image',
-    content: 'This influencer's transformation will SHOCK you! She claims AI helped her "unlock her true beauty" — experts call it digital deception.',
+    content: 'This influencer\'s transformation will SHOCK you! She claims AI helped her "unlock her true beauty" — experts call it digital deception.',
     imageUrl: '/images/influencer_ai1.png',
     author: {
       name: 'Daily Trends Online',
@@ -176,9 +176,9 @@ export const tempPosts = [
     metadata: {
       label: 'fake',
       redFlags: [
-        'Clickbait phrasing (“will SHOCK you!”)',
+        'Clickbait phrasing ("will SHOCK you!")',
         'Uses AI portrait with unrealistic facial symmetry and lighting',
-        'Ambiguous claim attributed to “experts” without citations',
+        'Ambiguous claim attributed to "experts" without citations',
         'Intentionally vague content to boost engagement'
       ],
       greenFlags: [],
@@ -189,7 +189,7 @@ export const tempPosts = [
   {
     id: '22',
     type: 'image',
-    content: 'Zendaya's "AI Twin" takes over the internet — fans can't tell who's real anymore 🤯',
+    content: 'Zendaya\'s "AI Twin" takes over the internet — fans can\'t tell who\'s real anymore 🤯',
     imageUrl: '/images/zendaya.jpg',
     author: {
       name: 'CelebRadar',
@@ -206,7 +206,7 @@ export const tempPosts = [
     metadata: {
       label: 'fake',
       redFlags: [
-        'Clickbait framing with celebrity name and “AI Twin” narrative',
+        'Clickbait framing with celebrity name and "AI Twin" narrative',
         'No verifiable quote or statement from Zendaya or her team',
         'Exploits celebrity likeness to farm engagement',
         'Uses emoji and hyperbolic tone to attract clicks'
@@ -214,7 +214,7 @@ export const tempPosts = [
       greenFlags: [
         'References a real public figure (making it more believable)'
       ],
-      evidence: 'No reputable entertainment outlet has published this claim. The image and caption follow a known engagement-bait format common on Facebook and TikTok “news” pages.',
+      evidence: 'No reputable entertainment outlet has published this claim. The image and caption follow a known engagement-bait format common on Facebook and TikTok "news" pages.',
       sourceUrl: 'https://celebradar.com/zendaya-ai-twin'
     }
   },
@@ -238,8 +238,8 @@ export const tempPosts = [
     metadata: {
       label: 'fake',
       redFlags: [
-        'Anonymous “leading doctor” with no name or credentials',
-        'Overgeneralized claim (“#1 worst carb”)',
+        'Anonymous "leading doctor" with no name or credentials',
+        'Overgeneralized claim ("#1 worst carb")',
         'Weight-loss buzzwords and fear language',
         'Click-through funnel (promises reveal after click)'
       ],
@@ -299,7 +299,7 @@ export const tempPosts = [
     metadata: {
       label: 'fake',
       redFlags: [
-        'AI-generated comic with gibberish text (“I will ham be be back”)',
+        'AI-generated comic with gibberish text ("I will ham be be back")',
         'Mimics emotional patriot content to attract engagement',
         'No identifiable artist or source credit',
         'Visually incoherent elements typical of AI art (text distortion, inconsistent faces)'
@@ -307,7 +307,7 @@ export const tempPosts = [
       greenFlags: [
         'Appears to mimic nostalgic patriotic art style'
       ],
-      evidence: 'Image shows multiple AI artifacts such as warped lettering and anatomical inconsistencies. Post uses sentimental framing (“inspirational”) but provides no context or authorship.',
+      evidence: 'Image shows multiple AI artifacts such as warped lettering and anatomical inconsistencies. Post uses sentimental framing ("inspirational") but provides no context or authorship.',
       sourceUrl: 'https://facebook.com/patriotmoments'
     }
   },
@@ -374,7 +374,7 @@ export const tempPosts = [
   {
     id: '28',
     type: 'image',
-    content: 'Vibes from last night's show 🎶✨ Loved every moment with this incredible band.',
+    content: 'Vibes from last night\'s show 🎶✨ Loved every moment with this incredible band.',
     imageUrl: '/images/real_insta1.jpg',
     author: {
       name: 'Simone Harper',
@@ -404,7 +404,7 @@ export const tempPosts = [
   {
     id: '29',
     type: 'image',
-    content: 'Still can't believe it 💍❤️',
+    content: 'Still can\'t believe it 💍❤️',
     imageUrl: '/images/real_insta2.jpg',
     author: {
       name: 'Ava Morgan',
