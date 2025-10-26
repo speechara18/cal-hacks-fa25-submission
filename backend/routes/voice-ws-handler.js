@@ -1,6 +1,15 @@
 import { WebSocketServer } from 'ws';
 import WebSocket from 'ws';
 
+function isJSONString(str) {
+  try {
+    JSON.parse(str);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 /**
  * Initialize WebSocket server for voice analysis
  * @param {http.Server} server - HTTP server instance
@@ -90,12 +99,31 @@ export function initializeVoiceWebSocket(server, posts) {
       // Relay client -> OpenAI
       ws.on('message', (data) => {
         try {
+          // Check if it's JSON (control message) or binary (audio)
           const message = data.toString();
           const parsed = JSON.parse(message);
           console.log(`[WS] Client -> OpenAI: ${parsed.type}`);
           openaiWs.send(message);
         } catch (err) {
-          console.error(`[WS] Error relaying:`, err);
+          // If JSON parsing fails, it's raw audio data
+          console.log(`[WS] Received raw audio data (${data.length} bytes)`);
+          
+          // Send audio input message to OpenAI in proper format
+          try {
+            // Convert binary data to base64
+            const base64Audio = data.toString('base64');
+            
+            // Send as proper input_audio_buffer.append message
+            openaiWs.send(JSON.stringify({
+              type: 'input_audio_buffer.append',
+              audio: base64Audio
+            }));
+            console.log(`[WS] Sent audio buffer to OpenAI (${data.length} bytes PCM, ${base64Audio.length} chars base64)`);
+          } catch (audioError) {
+            console.error(`[WS] Audio send error:`, audioError);
+            // Fallback to direct binary send
+            openaiWs.send(data);
+          }
         }
       });
     
@@ -105,11 +133,26 @@ export function initializeVoiceWebSocket(server, posts) {
           const parsed = JSON.parse(data.toString());
           console.log(`[WS] OpenAI -> Client: ${parsed.type}`);
           
+          // Log error details if it's an error message
+          if (parsed.type === 'error') {
+            console.error(`[WS] OpenAI Error Details:`, parsed.error);
+          }
+          
           if (ws.readyState === ws.OPEN) {
             ws.send(data);
           }
         } catch (err) {
-          console.error(`[WS] Error relaying:`, err);
+          // If JSON parsing fails, it's binary audio data
+          console.log(`[WS] OpenAI -> Client: raw audio data (${data.length} bytes)`);
+          
+          if (ws.readyState === ws.OPEN) {
+            try {
+              ws.send(data);  // Send raw binary to client
+            } catch (sendError) {
+              console.error(`[WS] Failed to send audio data:`, sendError);
+              // Don't close connection for send errors
+            }
+          }
         }
       });
     
@@ -121,7 +164,12 @@ export function initializeVoiceWebSocket(server, posts) {
     
       openaiWs.on('error', (err) => {
         console.error(`[WS] OpenAI error:`, err);
-        if (ws.readyState === ws.OPEN) ws.close(1011);
+        console.error(`[WS] Error details:`, err.message);
+        // Only close connection for critical errors, not minor ones
+        if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+          if (ws.readyState === ws.OPEN) ws.close(1011);
+        }
+        // For other errors, just log them but keep connection alive
       });
     
       ws.on('close', () => {

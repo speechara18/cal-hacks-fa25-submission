@@ -3,7 +3,7 @@
 
 import { Post } from '../components/PostCard';
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // ============================================================================
 // PostsAPI - Fetch posts from backend
@@ -64,7 +64,7 @@ export class VoiceBotAPI {
   private recordingInterval: ReturnType<typeof setInterval> | null = null;
 
   /**
-   * Start voice session - connects to backend WebSocket
+   * Start voice session - connects to backend WebSocket with Instagram-specific handling
    */
   async startVoiceSession(postId: string, postData?: any): Promise<{
     sessionId: string;
@@ -72,45 +72,77 @@ export class VoiceBotAPI {
   }> {
     try {
       console.log('[VoiceBotAPI] 🎤 Starting voice session for post:', postId);
+      console.log('[VoiceBotAPI] 🔧 Environment check:');
+      console.log('[VoiceBotAPI] 🔧 EXPO_PUBLIC_WS_URL:', process.env.EXPO_PUBLIC_WS_URL);
+      console.log('[VoiceBotAPI] 🔧 Using WS URL:', VoiceBotAPI.wsUrl);
 
-      // Request microphone permissions
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        throw new Error('Microphone permission not granted');
+      // Request microphone permissions with retry logic
+      let permissionStatus = await Audio.requestPermissionsAsync();
+      if (permissionStatus.status !== 'granted') {
+        console.log('[VoiceBotAPI] ⚠️ First permission request denied, retrying...');
+        // Wait a bit and try again (sometimes needed for Instagram mode)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        permissionStatus = await Audio.requestPermissionsAsync();
+        
+        if (permissionStatus.status !== 'granted') {
+          throw new Error('Microphone permission not granted. Please enable microphone access in settings.');
+        }
       }
 
-      // Set audio mode for recording
+      // Set audio mode for recording with Instagram-specific settings
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
         playThroughEarpieceAndroid: false,
         staysActiveInBackground: false,
+        shouldDuckAndroid: true, // Duck other audio when recording
       });
 
       console.log('[VoiceBotAPI] ✅ Microphone permissions granted');
 
+      // Check if backend is running first
+      const backendUrl = VoiceBotAPI.wsUrl.replace('ws://', 'http://').replace('ws:', 'http:');
+      try {
+        console.log('[VoiceBotAPI] 🔍 Checking backend health at:', backendUrl);
+        const healthResponse = await fetch(`${backendUrl}/health`, { 
+          method: 'GET'
+        });
+        console.log('[VoiceBotAPI] ✅ Backend health check passed:', healthResponse.status);
+      } catch (healthError) {
+        console.warn('[VoiceBotAPI] ⚠️ Backend health check failed, but continuing:', healthError);
+      }
+
       // Connect to backend WebSocket
       const wsUrl = `${VoiceBotAPI.wsUrl}/ws/voice?postId=${postId}`;
       console.log('[VoiceBotAPI] 🔌 Connecting to:', wsUrl);
+      console.log('[VoiceBotAPI] 🔌 Base WS URL:', VoiceBotAPI.wsUrl);
       
       this.ws = new WebSocket(wsUrl);
 
-      // Wait for connection
+      // Wait for connection with better error handling
       await new Promise<void>((resolve, reject) => {
         if (!this.ws) return reject(new Error('WebSocket not initialized'));
 
         this.ws.onopen = () => {
-          console.log('[VoiceBotAPI] ✅ WebSocket connected');
+          console.log('[VoiceBotAPI] ✅ WebSocket connected successfully');
           resolve();
         };
 
         this.ws.onerror = (error) => {
-          console.error('[VoiceBotAPI] ❌ WebSocket error:', error);
-          reject(new Error('WebSocket connection failed'));
+          console.error('[VoiceBotAPI] ❌ WebSocket connection error:', error);
+          console.error('[VoiceBotAPI] ❌ WebSocket URL was:', wsUrl);
+          reject(new Error(`WebSocket connection failed. Make sure backend is running on port 3001. URL: ${wsUrl}`));
+        };
+
+        this.ws.onclose = (event) => {
+          console.log('[VoiceBotAPI] 🔌 WebSocket closed:', event.code, event.reason);
+          if (event.code !== 1000) { // Not a normal closure
+            reject(new Error(`WebSocket closed unexpectedly: ${event.code} - ${event.reason}`));
+          }
         };
 
         setTimeout(() => {
-          reject(new Error('WebSocket connection timeout'));
+          reject(new Error(`WebSocket connection timeout after 10 seconds. URL: ${wsUrl}`));
         }, 10000);
       });
 
@@ -139,24 +171,46 @@ export class VoiceBotAPI {
 
     this.ws.onmessage = async (event) => {
       try {
-        const message = JSON.parse(event.data);
-        console.log('[VoiceBotAPI] 📩 Received:', message.type);
+        // Check if the data is binary (ArrayBuffer) or text
+        let messageData;
+        
+        if (event.data instanceof ArrayBuffer) {
+          // Handle binary audio data
+          console.log('[VoiceBotAPI] 🔊 Received binary audio data');
+          await this.playAudioChunk(event.data);
+          return;
+        } else if (typeof event.data === 'string') {
+          // Try to parse as JSON
+          try {
+            messageData = JSON.parse(event.data);
+          } catch {
+            // If it's not JSON, it might be base64 audio
+            console.log('[VoiceBotAPI] 🔊 Received non-JSON data, treating as audio');
+            await this.playAudioChunk(event.data);
+            return;
+          }
+        } else {
+          console.log('[VoiceBotAPI] ❓ Unknown message type:', typeof event.data);
+          return;
+        }
 
-        switch (message.type) {
+        console.log('[VoiceBotAPI] 📩 Received JSON message:', messageData.type);
+
+        switch (messageData.type) {
           case 'response.audio.delta':
-            await this.playAudioChunk(message.delta);
+            await this.playAudioChunk(messageData.delta);
             break;
 
           case 'conversation.item.input_audio_transcription.completed':
-            console.log('[VoiceBotAPI] 📝 Transcript:', message.transcript);
+            console.log('[VoiceBotAPI] 📝 Transcript:', messageData.transcript);
             break;
 
           case 'response.text.delta':
-            console.log('[VoiceBotAPI] 💬 AI:', message.delta);
+            console.log('[VoiceBotAPI] 💬 AI:', messageData.delta);
             break;
 
           case 'error':
-            console.error('[VoiceBotAPI] ❌ Error:', message.error);
+            console.error('[VoiceBotAPI] ❌ Error:', messageData.error);
             break;
         }
       } catch (error) {
@@ -170,11 +224,41 @@ export class VoiceBotAPI {
   }
 
   /**
-   * Start audio recording - PCM16 16kHz for OpenAI
+   * Start audio recording - Continuous streaming approach
    */
   private async startAudioRecording(): Promise<void> {
     try {
-      console.log('[VoiceBotAPI] 🎙️ Starting recording...');
+      console.log('[VoiceBotAPI] 🎙️ Starting continuous recording...');
+
+      // Clean up any existing recording first
+      if (this.recording) {
+        try {
+          const status = await this.recording.getStatusAsync();
+          if (status.isRecording) {
+            await this.recording.stopAndUnloadAsync();
+          }
+        } catch (error) {
+          console.log('[VoiceBotAPI] ⚠️ Cleanup existing recording:', error);
+        }
+        this.recording = null;
+      }
+
+      // Also ensure no other recording is active globally
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+          interruptionModeIOS: Audio.InterruptionModeIOS.DoNotMix,
+          interruptionModeAndroid: Audio.InterruptionModeAndroid.DoNotMix,
+        });
+        
+        // Small delay to ensure cleanup completes
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.log('[VoiceBotAPI] ⚠️ Audio mode setup:', error);
+      }
 
       this.recording = new Audio.Recording();
       
@@ -183,36 +267,36 @@ export class VoiceBotAPI {
           extension: '.wav',
           outputFormat: Audio.AndroidOutputFormat.DEFAULT,
           audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
-          sampleRate: 16000, // 16kHz for OpenAI
+          sampleRate: 24000, // 24kHz for OpenAI Realtime API
           numberOfChannels: 1,
-          bitRate: 128000,
+          bitRate: 384000, // 384 kbps for 24kHz PCM16
         },
         ios: {
           extension: '.wav',
           outputFormat: Audio.IOSOutputFormat.LINEARPCM,
           audioQuality: Audio.IOSAudioQuality.HIGH,
-          sampleRate: 16000, // 16kHz for OpenAI
+          sampleRate: 24000, // 24kHz for OpenAI Realtime API
           numberOfChannels: 1,
-          bitRate: 128000,
+          bitRate: 384000, // 384 kbps for 24kHz PCM16
           linearPCMBitDepth: 16,
           linearPCMIsBigEndian: false,
           linearPCMIsFloat: false,
         },
         web: {
           mimeType: 'audio/wav',
-          bitsPerSecond: 128000,
+          bitsPerSecond: 384000, // 384 kbps for 24kHz PCM16
         },
       });
 
       await this.recording.startAsync();
       this.isRecording = true;
 
-      console.log('[VoiceBotAPI] ✅ Recording started (PCM16 16kHz)');
+      console.log('[VoiceBotAPI] ✅ Continuous recording started (PCM16 24kHz)');
 
-      // Send audio chunks every 1 second
+      // Send audio chunks every 2 seconds to avoid overwhelming OpenAI
       this.recordingInterval = setInterval(async () => {
         await this.sendAudioChunk();
-      }, 1000);
+      }, 2000);
 
     } catch (error) {
       console.error('[VoiceBotAPI] ❌ Recording error:', error);
@@ -221,7 +305,7 @@ export class VoiceBotAPI {
   }
 
   /**
-   * Send audio chunk to backend
+   * Send audio chunk to backend - Rolling chunk approach to prevent accumulation
    */
   private async sendAudioChunk(): Promise<void> {
     if (!this.recording || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -232,53 +316,46 @@ export class VoiceBotAPI {
       const status = await this.recording.getStatusAsync();
       
       if (status.isRecording && status.durationMillis > 0) {
-        // Stop to get the file
-        await this.recording.stopAndUnloadAsync();
+        // Get the current recording URI without stopping
         const uri = this.recording.getURI();
         
         if (uri) {
-          // Read as base64
+          // Read the audio file
           const base64Audio = await FileSystem.readAsStringAsync(uri, {
             encoding: 'base64',
           });
 
-          // Send to backend
-          this.ws.send(JSON.stringify({
-            type: 'input_audio_buffer.append',
-            audio: base64Audio,
-          }));
+          // Send raw audio data (not JSON)
+          if (base64Audio && base64Audio.length > 0) {
+            // Convert base64 to ArrayBuffer for raw PCM data
+            const binaryString = atob(base64Audio);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
 
-          console.log('[VoiceBotAPI] 📤 Sent audio chunk');
+            // Strip WAV header (first 44 bytes) to get pure PCM data
+            const pcmData = bytes.slice(44);
+            
+            // Debug: Log WAV header info
+            if (bytes.length >= 44) {
+              const header = bytes.slice(0, 44);
+              const sampleRate = (header[24] | (header[25] << 8) | (header[26] << 16) | (header[27] << 24));
+              const channels = header[22] | (header[23] << 8);
+              const bitsPerSample = header[34] | (header[35] << 8);
+              console.log(`[VoiceBotAPI] 🔍 WAV Header: ${sampleRate}Hz, ${channels}ch, ${bitsPerSample}bit`);
+            }
+            
+            // Send raw PCM data (no WAV headers) as OpenAI expects
+            if (pcmData.length > 0 && pcmData.length < 500000) { // Increased limit for 24kHz
+              // Send raw PCM data (no WAV headers)
+              this.ws.send(pcmData);
+              console.log(`[VoiceBotAPI] 📤 Sent PCM chunk (${pcmData.length} bytes PCM, stripped ${bytes.length - pcmData.length} byte WAV header)`);
+            } else if (pcmData.length >= 500000) {
+              console.log(`[VoiceBotAPI] ⚠️ Skipping large audio chunk (${pcmData.length} bytes) to avoid overwhelming OpenAI`);
+            }
+          }
         }
-
-        // Restart recording for next chunk
-        this.recording = new Audio.Recording();
-        await this.recording.prepareToRecordAsync({
-          android: {
-            extension: '.wav',
-            outputFormat: Audio.AndroidOutputFormat.DEFAULT,
-            audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
-            sampleRate: 16000,
-            numberOfChannels: 1,
-            bitRate: 128000,
-          },
-          ios: {
-            extension: '.wav',
-            outputFormat: Audio.IOSOutputFormat.LINEARPCM,
-            audioQuality: Audio.IOSAudioQuality.HIGH,
-            sampleRate: 16000,
-            numberOfChannels: 1,
-            bitRate: 128000,
-            linearPCMBitDepth: 16,
-            linearPCMIsBigEndian: false,
-            linearPCMIsFloat: false,
-          },
-          web: {
-            mimeType: 'audio/wav',
-            bitsPerSecond: 128000,
-          },
-        });
-        await this.recording.startAsync();
       }
     } catch (error) {
       console.error('[VoiceBotAPI] ❌ Send chunk error:', error);
@@ -286,12 +363,31 @@ export class VoiceBotAPI {
   }
 
   /**
-   * Play audio chunk from backend using data URI
+   * Play audio chunk from backend - handles multiple data types
    */
-  private async playAudioChunk(base64Audio: string): Promise<void> {
+  private async playAudioChunk(audioData: string | ArrayBuffer): Promise<void> {
     try {
-      // Create data URI (no file needed)
-      const dataUri = `data:audio/wav;base64,${base64Audio}`;
+      let pcmData: Uint8Array;
+
+      if (audioData instanceof ArrayBuffer) {
+        // Convert ArrayBuffer to Uint8Array
+        pcmData = new Uint8Array(audioData);
+      } else if (typeof audioData === 'string') {
+        // Convert base64 string to Uint8Array
+        const binaryString = atob(audioData);
+        pcmData = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          pcmData[i] = binaryString.charCodeAt(i);
+        }
+      } else {
+        console.error('[VoiceBotAPI] ❌ Unknown audio data type:', typeof audioData);
+        return;
+      }
+
+      // Create WAV header for playback
+      const wavData = this.createWavFile(pcmData);
+      const base64 = btoa(String.fromCharCode(...wavData));
+      const dataUri = `data:audio/wav;base64,${base64}`;
 
       const { sound } = await Audio.Sound.createAsync(
         { uri: dataUri },
@@ -308,6 +404,48 @@ export class VoiceBotAPI {
     } catch (error) {
       console.error('[VoiceBotAPI] ❌ Play error:', error);
     }
+  }
+
+  /**
+   * Create WAV file from PCM data
+   */
+  private createWavFile(pcmData: Uint8Array): Uint8Array {
+    const sampleRate = 16000;
+    const numChannels = 1;
+    const bitsPerSample = 16;
+    const byteRate = sampleRate * numChannels * bitsPerSample / 8;
+    const blockAlign = numChannels * bitsPerSample / 8;
+    const dataSize = pcmData.length;
+    const fileSize = 36 + dataSize;
+
+    const header = new ArrayBuffer(44);
+    const view = new DataView(header);
+
+    // RIFF header
+    view.setUint32(0, 0x46464952, true); // "RIFF"
+    view.setUint32(4, fileSize, true);
+    view.setUint32(8, 0x45564157, true); // "WAVE"
+
+    // fmt chunk
+    view.setUint32(12, 0x20746d66, true); // "fmt "
+    view.setUint32(16, 16, true); // chunk size
+    view.setUint16(20, 1, true); // audio format (PCM)
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+
+    // data chunk
+    view.setUint32(36, 0x61746164, true); // "data"
+    view.setUint32(40, dataSize, true);
+
+    // Combine header and PCM data
+    const wavFile = new Uint8Array(44 + dataSize);
+    wavFile.set(new Uint8Array(header), 0);
+    wavFile.set(pcmData, 44);
+
+    return wavFile;
   }
 
   /**

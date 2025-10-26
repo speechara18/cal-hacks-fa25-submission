@@ -5,12 +5,10 @@ import { FeedScreen } from '@/components/FeedScreen';
 import { InstagramFeedScreen } from '@/components/InstagramFeedScreen';
 import { FacebookFeedScreen } from '@/components/FacebookFeedScreen';
 import { PlatformSelector, PlatformMode } from '@/components/PlatformSelector';
-import { APITestScreen } from '@/components/APITestScreen';
 import { PostsAPI } from '@/api/posts';
 import { filterPostsByMode } from '@/utils/dataFilters';
 
 export default function HomeScreen() {
-  const [showAPITest, setShowAPITest] = useState(false);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedMode, setSelectedMode] = useState<PlatformMode>('twitter');
@@ -46,19 +44,6 @@ export default function HomeScreen() {
     }
   };
 
-  if (showAPITest) {
-    return (
-      <View style={styles.container}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => setShowAPITest(false)}
-        >
-          <Text style={styles.backButtonText}>← Back to Feed</Text>
-        </TouchableOpacity>
-        <APITestScreen />
-      </View>
-    );
-  }
 
   if (loading) {
     return (
@@ -86,13 +71,6 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity 
-        style={styles.testButton} 
-        onPress={() => setShowAPITest(true)}
-      >
-        <Text style={styles.testButtonText}>🧪 Test API Integration</Text>
-      </TouchableOpacity>
-      
       <PlatformSelector 
         selectedMode={selectedMode}
         onModeChange={setSelectedMode}
@@ -106,28 +84,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  testButton: {
-    backgroundColor: '#FF6B6B',
-    padding: 10,
-    margin: 10,
-    borderRadius: 5,
-  },
-  testButtonText: {
-    color: 'white',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  backButton: {
-    backgroundColor: '#007AFF',
-    padding: 10,
-    margin: 10,
-    borderRadius: 5,
-  },
-  backButtonText: {
-    color: 'white',
-    textAlign: 'center',
-    fontWeight: 'bold',
   },
 });
 

@@ -14,7 +14,7 @@ interface FeedScreenProps {
   onPostTap?: (post: Post) => void;
 }
 
-export function FeedScreen({ posts, onPostTap }: FeedScreenProps) {
+export function FacebookFeedScreen({ posts, onPostTap }: FeedScreenProps) {
   const [voiceBotAPI] = useState(() => new VoiceBotAPI());
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<'connecting' | 'connected' | 'listening' | 'error'>('connecting');

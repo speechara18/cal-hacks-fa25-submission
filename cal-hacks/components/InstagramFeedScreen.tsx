@@ -1,20 +1,20 @@
-// cal-hacks/components/FeedScreen.tsx
-// REPLACE WITH THIS - ACTUALLY STARTS VOICE SESSION
+// cal-hacks/components/InstagramFeedScreen.tsx
+// Instagram-specific feed with voice coach integration
 
 import React, { useState } from 'react';
-import { View, FlatList, StyleSheet, Alert, Modal, ActivityIndicator } from 'react-native';
+import { View, FlatList, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import { InstagramPostCard } from './InstagramPostCard';
 import { Post } from './PostCard';
 import { ThemedView } from './themed-view';
 import { ThemedText } from './themed-text';
 import { VoiceBotAPI } from '@/api/posts';
 
-interface FeedScreenProps {
+interface InstagramFeedScreenProps {
   posts: Post[];
   onPostTap?: (post: Post) => void;
 }
 
-export function FeedScreen({ posts, onPostTap }: FeedScreenProps) {
+export function InstagramFeedScreen({ posts, onPostTap }: InstagramFeedScreenProps) {
   const [voiceBotAPI] = useState(() => new VoiceBotAPI());
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<'connecting' | 'connected' | 'listening' | 'error'>('connecting');
@@ -22,32 +22,18 @@ export function FeedScreen({ posts, onPostTap }: FeedScreenProps) {
   const [currentPost, setCurrentPost] = useState<Post | null>(null);
 
   const handlePostTap = (post: Post) => {
-    console.log('🎯 FeedScreen.handlePostTap called');
+    console.log('🎯 InstagramFeedScreen.handlePostTap called');
     console.log('🎯 Post ID:', post.id);
     
-    setCurrentPost(post);
-    
-    // Show alert
-    Alert.alert(
-      'Voice Coach',
-      `Opening voice coach for post by ${post.author.name}...\n\nThis will start a voice conversation about this post.`,
-      [
-        {
-          text: 'Start Voice Coach',
-          onPress: () => startVoiceCoach(post)
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        }
-      ]
-    );
+    // Directly start voice coach without Alert dialog
+    startVoiceCoach(post);
   };
 
   const startVoiceCoach = async (post: Post) => {
     try {
       console.log('🎤 Starting voice coach for post:', post.id);
       
+      setCurrentPost(post);
       setIsVoiceActive(true);
       setVoiceStatus('connecting');
       setErrorMessage(null);
@@ -63,19 +49,15 @@ export function FeedScreen({ posts, onPostTap }: FeedScreenProps) {
         setVoiceStatus('listening');
       }, 1000);
 
-      // Call parent handler if needed
-      onPostTap?.(post);
-
     } catch (error) {
       console.error('❌ Failed to start voice session:', error);
       setVoiceStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'Failed to connect');
       
-      Alert.alert(
-        'Connection Error',
-        'Failed to start voice coach. Make sure the backend is running on port 3001.',
-        [{ text: 'OK', onPress: () => setIsVoiceActive(false) }]
-      );
+      // Show error in modal instead of Alert
+      setTimeout(() => {
+        setIsVoiceActive(false);
+      }, 3000);
     }
   };
 
