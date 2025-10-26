@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, FlatList, StyleSheet, Alert } from 'react-native';
+import { View, FlatList, StyleSheet } from 'react-native';
 import { FacebookPostCard, Post } from './FacebookPostCard';
 import { ThemedView } from './themed-view';
 import { ThemedText } from './themed-text';
@@ -11,23 +11,7 @@ interface FacebookFeedScreenProps {
 
 export function FacebookFeedScreen({ posts, onPostTap }: FacebookFeedScreenProps) {
   const handlePostTap = (post: Post) => {
-    Alert.alert(
-      'Voice Coach',
-      `Opening voice coach for post by ${post.author.name}...\n\nThis would start a LiveKit room and Vapi session.`,
-      [
-        {
-          text: 'Start Voice Coach',
-          onPress: () => {
-            onPostTap?.(post);
-            console.log('Opening voice coach for post:', post.id);
-          }
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        }
-      ]
-    );
+    onPostTap?.(post);
   };
 
   const renderPost = ({ item }: { item: Post }) => (

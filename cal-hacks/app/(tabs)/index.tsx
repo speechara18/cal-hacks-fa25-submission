@@ -6,6 +6,7 @@ import { InstagramFeedScreen } from '@/components/InstagramFeedScreen';
 import { FacebookFeedScreen } from '@/components/FacebookFeedScreen';
 import { PlatformSelector, PlatformMode } from '@/components/PlatformSelector';
 import { APITestScreen } from '@/components/APITestScreen';
+import { VoiceBotOverlay } from '@/components/VoiceBotOverlay';
 import { PostsAPI } from '@/api/posts';
 import { filterPostsByMode } from '@/utils/dataFilters';
 
@@ -14,6 +15,13 @@ export default function HomeScreen() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedMode, setSelectedMode] = useState<PlatformMode>('twitter');
+
+  // Voice bot states
+  const [showVoiceOverlay, setShowVoiceOverlay] = useState(false);
+  const [isBotSpeaking, setIsBotSpeaking] = useState(false);
+  const [isUserSpeaking, setIsUserSpeaking] = useState(false);
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [selectedPost, setSelectedPost] = useState(null);
 
   // Load posts from API on component mount
   React.useEffect(() => {
@@ -33,17 +41,33 @@ export default function HomeScreen() {
   }, []);
 
   const handlePostTap = (post: any) => {
-    // Navigate to post detail screen
+    // Show voice overlay instead of navigating immediately
     console.log('🔍 Post tapped:', post.id);
-    console.log('🔍 Post data:', JSON.stringify(post, null, 2));
-    console.log('🔍 Navigating to:', `/post/${post.id}`);
+    setSelectedPost(post);
+    setShowVoiceOverlay(true);
+    setIsUserSpeaking(true); // Show "listening" state
+    setIsVoiceActive(true); // Start pulsing animation
+  };
+
+  const handleStartVoiceCoach = () => {
+    // Start the voice coach session
+    console.log('🎤 Starting voice coach for post:', selectedPost?.id);
+    setIsBotSpeaking(true); // Switch to bot speaking mode
+    setIsUserSpeaking(false);
     
-    try {
-      router.push(`/post/${post.id}`);
-      console.log('✅ Navigation called successfully');
-    } catch (error) {
-      console.error('❌ Navigation error:', error);
-    }
+    // Simulate bot speaking for 3 seconds, then return to listening
+    setTimeout(() => {
+      setIsBotSpeaking(false);
+      setIsUserSpeaking(true);
+    }, 3000);
+  };
+
+  const handleCloseVoiceOverlay = () => {
+    setShowVoiceOverlay(false);
+    setIsBotSpeaking(false);
+    setIsUserSpeaking(false);
+    setIsVoiceActive(false);
+    setSelectedPost(null);
   };
 
   if (showAPITest) {
@@ -99,6 +123,19 @@ export default function HomeScreen() {
       />
       
       {renderFeed()}
+      
+      {/* Voice Bot Overlay */}
+      {showVoiceOverlay && (
+        <VoiceBotOverlay 
+          isBotSpeaking={isBotSpeaking}
+          isUserSpeaking={isUserSpeaking}
+          isActive={isVoiceActive}
+          size={80}
+          onStart={handleStartVoiceCoach}
+          onClose={handleCloseVoiceOverlay}
+          post={selectedPost}
+        />
+      )}
     </View>
   );
 }

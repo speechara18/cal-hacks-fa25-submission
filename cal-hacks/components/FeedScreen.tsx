@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, FlatList, StyleSheet, Alert } from 'react-native';
+import { View, FlatList, StyleSheet } from 'react-native';
 import { PostCard, Post } from './PostCard';
 import { ThemedView } from './themed-view';
 import { ThemedText } from './themed-text';
@@ -11,25 +11,7 @@ interface FeedScreenProps {
 
 export function FeedScreen({ posts, onPostTap }: FeedScreenProps) {
   const handlePostTap = (post: Post) => {
-    // This is where the voice bot modal would open
-    Alert.alert(
-      'Voice Coach',
-      `Opening voice coach for post by ${post.author.name}...\n\nThis would start a LiveKit room and Vapi session.`,
-      [
-        {
-          text: 'Start Voice Coach',
-          onPress: () => {
-            onPostTap?.(post);
-            // Here you'd open the voice bot modal
-            console.log('Opening voice coach for post:', post.id);
-          }
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        }
-      ]
-    );
+    onPostTap?.(post);
   };
 
   const renderPost = ({ item }: { item: Post }) => (
